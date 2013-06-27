@@ -3,6 +3,7 @@
 import sys
 from random import randint
 import string
+import re
 
 def make_chains(corpus):
     """Takes an input text as a string and returns a dictionary of
@@ -38,7 +39,15 @@ def get_first_pair(chains):
         if w1[0] in string.ascii_uppercase:
             return (w1,w2)
 
+def end_on_punctuation(result):
 
+
+
+    truncate=result.rfind(".")
+    if truncate == -1:
+        return result
+
+    return result[0:truncate+1]
 
 def make_text(chains):
     """Takes a dictionary of markov chains and returns random text
@@ -49,7 +58,7 @@ def make_text(chains):
     w1, w2 = get_first_pair(chains)
     result = w1 + " " + w2
     
-    while len(result) < 140:
+    while len(result) < 140 and not re.search("[\.\?!\"]", result[-1]) :
         # print "w1 and w2 are:",w1,w2
         if not chains.get((w1,w2)):
             break
@@ -63,6 +72,8 @@ def make_text(chains):
         result += " " + w3
         w1 = w2
         w2 = w3
+
+    #result = end_on_punctuation(result)
 
     return result
 
