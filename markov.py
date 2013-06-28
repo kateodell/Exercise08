@@ -4,6 +4,7 @@ import sys
 from random import randint
 import string
 import re
+import twitter
 
 def make_chains(corpus, ngram):
     """Takes an input text as a string and returns a dictionary of
@@ -106,6 +107,15 @@ def main():
     chain_dict = make_chains(text, int(ngram))
     random_text = make_text(chain_dict)
     print random_text
+
+    #set up the twitter stuff
+    api = twitter.Api(consumer_key = 'asdf',consumer_secret = 'asdf',
+        access_token_key = 'asdf', access_token_secret = 'asdf')
+
+    print api.VerifyCredentials()
+
+    status = api.PostUpdate(random_text)
+    print status
 
 if __name__ == "__main__":
     main()
