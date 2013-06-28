@@ -23,19 +23,20 @@ def make_chains(corpus, ngram):
             temp_words[n] = words[i+n]
 
 
-        #store w1+w2 in dict, with w3 as chain
+        #store ngram tuples in dict, with list of next words as value
         if(chain_dict.get(tuple(temp_words[0:-1]))):
             chain_dict[tuple(temp_words[0:-1])].append(temp_words[-1])
         else:
             chain_dict[tuple(temp_words[0:-1])] = [temp_words[-1]]
 
+    # testing: print out dict after generation
     # for t in chain_dict.keys():
     #     print t, chain_dict[t]
     return chain_dict
 
 
 def get_first_tuple(chains):
-
+    #keep looping until a valid first tuple is returned (starts w/ a capital letter)
     while True:
         num_tuples = len(chains.keys())
         #generate random index for keys and set w1 and w2 equal to each value of the tuple
@@ -45,29 +46,21 @@ def get_first_tuple(chains):
         if first_tuple[0][0] in string.ascii_uppercase:
             return first_tuple
 
-def end_on_punctuation(result):
-
-    truncate=result.rfind(".")
-    if truncate == -1:
-        return result
-
-    return result[0:truncate+1]
-
 def make_text(chains):
     """Takes a dictionary of markov chains and returns random text
     based off an original text."""
     
+    #initialize result and first set of words to start markov chain with
     result = ""
     temp_words = get_first_tuple(chains)
 
     result = " ".join(temp_words)
-
-    # print "result before loop is:",result
     
+    # keep adding a word until the result is > 140 chars or 
+    #   if the word ends w/ sentence-ending punctuation
     while len(result) < 140 and not re.search("[\.\?!\"]", result[-1]) :
         # check if the chain is in the dict (edge case for end of file)
         if not chains.get(temp_words):
-            # print "breaking because get failed"
             break
         words = chains[temp_words]
         # generate random int to choose next word
@@ -76,7 +69,6 @@ def make_text(chains):
         next_word = words[num]
         #check if next_word is going to put us over 140 chars
         if len(result)+len(next_word) > 140:
-            # print "breaking because next word goes over 140. next word is:",next_word
             break
         # add next word to result
         result += " " + next_word
@@ -84,15 +76,19 @@ def make_text(chains):
         temp_words = temp_words[1:]
         temp_words = temp_words + tuple((next_word,))
 
-        # print "at end of loop, temp_words is:", temp_words
-
-    #result = end_on_punctuation(result)
-    # print "result after loop is",result
     if not re.search("[\.\?!\"]", result[-1]):
         result = make_text(chains)
     
     return result
 
+def post_on_twitter(text):
+    #set up the twitter stuff  
+    api = twitter.Api(consumer_key = 'asdf',consumer_secret = 'asdf',
+        access_token_key = 'asdf', access_token_secret = 'asdf')
+
+    print api.VerifyCredentials()
+
+    status = api.PostUpdate(text)
 
 
 def main():
@@ -100,7 +96,6 @@ def main():
 
     script, filename, ngram = args
 
-    # Change this to read input_text from a file
     input_text = open(filename)
     text = input_text.read()
 
@@ -108,14 +103,13 @@ def main():
     random_text = make_text(chain_dict)
     print random_text
 
-    #set up the twitter stuff
-    api = twitter.Api(consumer_key = 'asdf',consumer_secret = 'asdf',
-        access_token_key = 'asdf', access_token_secret = 'asdf')
+    print "Do you want to post that to Twitter? (y or n)"
+    answer = raw_input()
+    if answer == "y":
+        post_on_twitter(random_text)
+        print "It is now on the interwebz!"
 
-    print api.VerifyCredentials()
 
-    status = api.PostUpdate(random_text)
-    print status
 
 if __name__ == "__main__":
     main()
