@@ -3,10 +3,11 @@
 #!/usr/bin/env python
 
 import sys
-from random import randint
+import random
 import string
 import re
 import twitter
+import keys
 
 def make_chains(corpus, ngram):
     """Takes an input text as a string and returns a dictionary of
@@ -21,11 +22,14 @@ def make_chains(corpus, ngram):
         for n in range(0,ngram+1):
             temp_words[n] = words[i+n]
 
+        key = tuple(temp_words[:-1])
+        val = temp_words[-1]
         #store ngram tuples in dict, with list of next words as value
-        if(chain_dict.get(tuple(temp_words[0:-1]))):
-            chain_dict[tuple(temp_words[0:-1])].append(temp_words[-1])
+        if(chain_dict.get(key)):
+            chain_dict[key].append(val)
         else:
-            chain_dict[tuple(temp_words[0:-1])] = [temp_words[-1]]
+            chain_dict[key] = []
+            chain_dict[key].append(val)
 
     # used for testing: print out dict after generation
     # for t in chain_dict.keys():
@@ -40,15 +44,20 @@ def is_all_upper(word):
 
 def get_first_tuple(chains):
     #loop until a valid first tuple is returned (starts w/ a capital letter)
-    while True:
-        num_tuples = len(chains.keys())
-        #generate random index in keys and set first_tuple to that key
-        num = randint(0,num_tuples-1)
-        first_tuple = chains.keys()[num]
+    keys = chains.keys()
+    upper_keys = [ key for key in keys if is_all_upper(key[0]) ] # list comprehension
+    return random.choice(upper_keys)
 
-        #return only if the first tuple is valid to start script line (word in all caps)
-        if is_all_upper(first_tuple[0]):
-            return first_tuple
+    # this was the original version of the above code that is not nearly as pretty and easy to read.
+    # while True:
+    #     num_tuples = len(chains.keys())
+    #     #generate random index in keys and set first_tuple to that key
+    #     num = randint(0,num_tuples-1)
+    #     first_tuple = chains.keys()[num]
+
+    #     #return only if the first tuple is valid to start script line (word in all caps)
+    #     if is_all_upper(first_tuple[0]):
+    #         return first_tuple
 
 def make_text(chains, limit_length):
     """Takes a dictionary of markov chains and returns random text
@@ -62,15 +71,12 @@ def make_text(chains, limit_length):
     
     # keep adding a word until the result is > 140 chars or 
     #   if the word ends w/ sentence-ending punctuation
-    while True :
-        # check if the chain is in the dict (edge case for end of file)
-        if not chains.get(temp_words):
-            break
+    while chains.get(temp_words):
 
         words = chains[temp_words]
         # generate random int to choose next word
-        num = randint(0,len(words)-1)
-        next_word = words[num]
+        next_word = random.choice(words)
+
         # END CONDITION: If limit_length True AND next_word will put us over 140 chars
         if limit_length and len(result)+len(next_word) > 140:
             break
@@ -84,10 +90,9 @@ def make_text(chains, limit_length):
             break
 
         # add next word to result
-        result += " " + next_word
+        result = result + " " + str(next_word)
         # splice words being processed to remove the first one and append the newly added word
-        temp_words = temp_words[1:]
-        temp_words = temp_words + tuple((next_word,))
+        temp_words = temp_words[1:] +  (next_word,)
 
     # if result doesn't end with end-punctuation, try again.
     if not re.search("[\.\?!\"]", result[-1]):
@@ -100,22 +105,33 @@ def post_on_twitter(text):
         answer = raw_input()
         if answer == "y":
             #set up the twitter stuff  
-            api = twitter.Api(consumer_key = 'agyxIKT7LNhC0QmAmgawA',consumer_secret = 'Hpf2VVWpYYabAthvZCFX9CYZHKchamhv8GVGIuuU',
-                access_token_key = '1553835870-99vXUx6EDeA2cOPHi3mgOWGtdHNg8pcAf5ubmkr', access_token_secret = 'ehpTUPRKe7ebjjJKD0frI9WjZ18Le7jZm8cb5UvTgk')
+            api = twitter.Api(consumer_key = keys.consumer_key,
+                              consumer_secret = keys.consumer_secret,
+                              access_token_key = keys.access_token_key,
+                              access_token_secret = keys.access_token_secret)
             #print api.VerifyCredentials()
             status = api.PostUpdate(text)
             print "It is now on the interwebz!"
 
 def format_as_script(text):
-    result = ""
     words = text.split()
-    i = 0
-    while (i < len(words) and is_all_upper(words[i])):
-        result = result + words[i]
-        i += 1
-    result += ": "
-    result += " ".join(words[i:])
-    return result
+    name = []
+    while is_all_upper(words[0]):
+        name.append(words[0])
+        words.pop(0)
+
+    return "%s: %s"%(" ".join(name), " ".join(words))
+
+    # OLD VERSION of format_as_script. above is more straightforward
+    # result = ""
+    # words = text.split()
+    # i = 0
+    # while (i < len(words) and is_all_upper(words[i])):
+    #     result = result + words[i]
+    #     i += 1
+    # result += ": "
+    # result += " ".join(words[i:])
+    # return result
 
 def main():
     args = sys.argv
@@ -130,11 +146,7 @@ def main():
     #ask if should limit to 140 chars for twitter posting
     print "Do you want to limit lines to 140 characters for Twitter posting? (y or n)"
     ans = raw_input("> ")
-    if ans == "y":
-        limit_length = True
-    else:
-        limit_length = False
-
+    limit_length = ans == "y"
 
     while True:
         print "How many lines do you want to generate? (or q to quit) "
@@ -153,11 +165,6 @@ def main():
             print random_text
             if limit_length:
                 post_on_twitter(random_text)
-
-
-        #post_on_twitter(random_text)
-
-
 
 
 
